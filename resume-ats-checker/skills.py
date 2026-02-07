@@ -31,4 +31,11 @@ SKILLS = [
     "excel",
     "power bi",
     "tableau",
+    "mongodb",
+    "postgresql",
+    "mysql",
+    "rest api",
+    "api",
+    "oop",
+    "data structures",
 ]

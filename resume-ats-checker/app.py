@@ -6,7 +6,9 @@ from docx import Document
 from skills import SKILLS
 
 
-# Extract text from PDF
+# ----------------------------
+# TEXT EXTRACTION
+# ----------------------------
 def extract_text_from_pdf(pdf_file):
     text = ""
     with pdfplumber.open(pdf_file) as pdf:
@@ -17,7 +19,6 @@ def extract_text_from_pdf(pdf_file):
     return text.lower()
 
 
-# Extract text from DOCX
 def extract_text_from_docx(docx_file):
     doc = Document(docx_file)
     text = ""
@@ -26,19 +27,19 @@ def extract_text_from_docx(docx_file):
     return text.lower()
 
 
-# Extract Email
+# ----------------------------
+# CONTACT EXTRACTION
+# ----------------------------
 def extract_email(text):
     match = re.search(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", text)
     return match.group() if match else None
 
 
-# Extract Phone
 def extract_phone(text):
     match = re.search(r"\+?\d[\d\s\-]{8,}\d", text)
     return match.group() if match else None
 
 
-# Extract GitHub / LinkedIn Links
 def extract_links(text):
     github = re.search(r"(https?://)?(www\.)?github\.com/[a-zA-Z0-9_-]+", text)
     linkedin = re.search(r"(https?://)?(www\.)?linkedin\.com/in/[a-zA-Z0-9_-]+", text)
@@ -49,20 +50,29 @@ def extract_links(text):
     }
 
 
-# Detect sections
+# ----------------------------
+# SMART SECTION DETECTION
+# ----------------------------
+SECTION_KEYWORDS = {
+    "summary": ["summary", "objective", "profile", "about me"],
+    "education": ["education", "academic", "qualification", "university", "college"],
+    "projects": ["projects", "project", "academic project", "mini project"],
+    "experience": ["experience", "work experience", "internship", "employment"],
+    "skills": ["skills", "technical skills", "key skills"],
+    "certifications": ["certifications", "certification", "courses", "training"],
+}
+
+
 def check_sections(text):
-    sections = {
-        "education": "education" in text,
-        "projects": "project" in text,
-        "experience": "experience" in text or "internship" in text,
-        "skills": "skills" in text,
-        "certifications": "certification" in text,
-        "summary": "summary" in text or "objective" in text,
-    }
-    return sections
+    detected = {}
+    for section, keywords in SECTION_KEYWORDS.items():
+        detected[section] = any(word in text for word in keywords)
+    return detected
 
 
-# Extract skills
+# ----------------------------
+# SKILLS EXTRACTION
+# ----------------------------
 def extract_skills(text):
     found = []
     for skill in SKILLS:
@@ -71,46 +81,9 @@ def extract_skills(text):
     return sorted(set(found))
 
 
-# Calculate ATS Score
-def calculate_ats_score(sections, skills_found, email, phone, github, linkedin):
-    score = 0
-
-    # Contact info
-    if email:
-        score += 10
-    if phone:
-        score += 10
-
-    # Links scoring
-    if github:
-        score += 5
-    if linkedin:
-        score += 5
-
-    # Sections scoring
-    if sections["summary"]:
-        score += 10
-    if sections["education"]:
-        score += 15
-    if sections["projects"]:
-        score += 15
-    if sections["experience"]:
-        score += 15
-    if sections["skills"]:
-        score += 10
-    if sections["certifications"]:
-        score += 5
-
-    # Skills scoring
-    if len(skills_found) >= 5:
-        score += 10
-    if len(skills_found) >= 10:
-        score += 10
-
-    return min(score, 100)
-
-
-# Job Description Match
+# ----------------------------
+# JOB DESCRIPTION MATCH
+# ----------------------------
 def job_match(resume_skills, job_desc_text):
     job_desc_text = job_desc_text.lower()
     job_skills = []
@@ -132,9 +105,121 @@ def job_match(resume_skills, job_desc_text):
     return match_score, matched, missing, job_skills
 
 
-# Generate TXT Report
+# ----------------------------
+# JOB ROLE SUGGESTIONS
+# ----------------------------
+def suggest_roles(skills_found):
+    skills_found = [s.lower() for s in skills_found]
+    roles = []
+
+    if "python" in skills_found and (
+        "django" in skills_found or "flask" in skills_found or "fastapi" in skills_found
+    ):
+        roles.append("Backend Developer (Python)")
+
+    if "react" in skills_found or "javascript" in skills_found:
+        roles.append("Frontend Developer")
+
+    if (
+        "machine learning" in skills_found
+        or "deep learning" in skills_found
+        or "tensorflow" in skills_found
+        or "pytorch" in skills_found
+    ):
+        roles.append("Machine Learning Engineer")
+
+    if (
+        "pandas" in skills_found
+        and "numpy" in skills_found
+        and (
+            "power bi" in skills_found
+            or "tableau" in skills_found
+            or "excel" in skills_found
+        )
+    ):
+        roles.append("Data Analyst")
+
+    if "sql" in skills_found and (
+        "postgresql" in skills_found or "mysql" in skills_found
+    ):
+        roles.append("Database Developer")
+
+    if "aws" in skills_found or "docker" in skills_found or "linux" in skills_found:
+        roles.append("DevOps / Cloud Engineer (Junior)")
+
+    if not roles:
+        roles.append("Software Developer / Intern")
+
+    return roles
+
+
+# ----------------------------
+# ATS SCORING WITH BREAKDOWN (REALISTIC)
+# ----------------------------
+def calculate_score_breakdown(
+    sections, skills_found, email, phone, github, linkedin, match_score=None
+):
+    breakdown = {
+        "Contact Score": 0,
+        "Links Score": 0,
+        "Section Score": 0,
+        "Skills Score": 0,
+        "JD Match Bonus": 0,
+    }
+
+    # Contact (20 max)
+    if email:
+        breakdown["Contact Score"] += 10
+    if phone:
+        breakdown["Contact Score"] += 10
+
+    # Links (10 max)
+    if github:
+        breakdown["Links Score"] += 5
+    if linkedin:
+        breakdown["Links Score"] += 5
+
+    # Sections (50 max)
+    if sections["summary"]:
+        breakdown["Section Score"] += 10
+    if sections["education"]:
+        breakdown["Section Score"] += 10
+    if sections["projects"]:
+        breakdown["Section Score"] += 10
+    if sections["experience"]:
+        breakdown["Section Score"] += 10
+    if sections["skills"]:
+        breakdown["Section Score"] += 5
+    if sections["certifications"]:
+        breakdown["Section Score"] += 5
+
+    # Skills Count (10 max)
+    if len(skills_found) >= 5:
+        breakdown["Skills Score"] += 5
+    if len(skills_found) >= 10:
+        breakdown["Skills Score"] += 5
+
+    # JD Match Bonus (10 max)
+    if match_score is not None:
+        if match_score >= 70:
+            breakdown["JD Match Bonus"] = 10
+        elif match_score >= 40:
+            breakdown["JD Match Bonus"] = 5
+        else:
+            breakdown["JD Match Bonus"] = 0
+
+    total = sum(breakdown.values())
+    total = min(total, 100)
+
+    return total, breakdown
+
+
+# ----------------------------
+# REPORT GENERATOR
+# ----------------------------
 def generate_report(
     score,
+    breakdown,
     email,
     phone,
     github,
@@ -144,14 +229,23 @@ def generate_report(
     match_score=None,
     matched=None,
     missing=None,
+    roles=None,
 ):
 
     report = f"""
 ==============================
-      RESUME ATS REPORT
+     RESUME ATS REPORT (PRO UI)
 ==============================
 
-ATS Score: {score}/100
+Final ATS Score: {score}/100
+
+Score Breakdown:
+"""
+
+    for k, v in breakdown.items():
+        report += f"- {k}: {v}\n"
+
+    report += f"""
 
 Contact Info:
 - Email: {email if email else "Not Found"}
@@ -168,10 +262,12 @@ Sections Found:
         report += f"- {sec.title()}: {'Yes' if found else 'No'}\n"
 
     report += "\nSkills Found:\n"
-    if skills_found:
-        report += ", ".join(skills_found) + "\n"
-    else:
-        report += "No skills detected\n"
+    report += ", ".join(skills_found) + "\n" if skills_found else "No skills detected\n"
+
+    if roles:
+        report += "\nSuggested Job Roles:\n"
+        for r in roles:
+            report += f"- {r}\n"
 
     if match_score is not None:
         report += f"\nJob Match Score: {match_score}%\n"
@@ -186,19 +282,50 @@ Sections Found:
     return report
 
 
-# Streamlit UI
-st.set_page_config(page_title="Resume ATS Checker", page_icon="📄")
+# ----------------------------
+# STREAMLIT UI
+# ----------------------------
+st.set_page_config(page_title="Resume ATS Checker PRO", page_icon="📄", layout="wide")
 
-st.title("📄 Resume ATS Checker (Free AI Project)")
-st.write(
-    "Upload your resume (PDF or DOCX) and optionally paste Job Description to check match score."
+st.markdown(
+    """
+    <style>
+    .main-title {
+        font-size: 40px;
+        font-weight: bold;
+        color: #00b4d8;
+    }
+    .sub-title {
+        font-size: 18px;
+        color: #888;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
-uploaded_file = st.file_uploader("Upload Resume (PDF / DOCX)", type=["pdf", "docx"])
-job_desc = st.text_area("📌 Paste Job Description (Optional)", height=200)
+st.markdown(
+    '<div class="main-title">📄 Resume ATS Checker PRO</div>', unsafe_allow_html=True
+)
+st.markdown(
+    '<div class="sub-title">Upload Resume • Get ATS Score • Match JD • Download Report</div>',
+    unsafe_allow_html=True,
+)
+
+st.write("")
+
+# Sidebar
+st.sidebar.header("📂 Upload Resume")
+uploaded_file = st.sidebar.file_uploader(
+    "Upload Resume (PDF / DOCX)", type=["pdf", "docx"]
+)
+job_desc = st.sidebar.text_area("📌 Paste Job Description (Optional)", height=250)
+
+st.sidebar.write("---")
+st.sidebar.info("Tip: Add Job Description to get Match Score + Missing Skills.")
 
 if uploaded_file:
-    st.success("Resume uploaded successfully!")
+    st.success("✅ Resume uploaded successfully!")
 
     file_type = uploaded_file.name.split(".")[-1].lower()
 
@@ -210,12 +337,9 @@ if uploaded_file:
         st.error("Unsupported file format!")
         st.stop()
 
-    st.subheader("📌 Resume Preview (First 1500 characters)")
-    st.text_area("Extracted Resume Text", resume_text[:1500], height=200)
-
+    # Extract info
     email = extract_email(resume_text)
     phone = extract_phone(resume_text)
-
     links = extract_links(resume_text)
     github = links["github"]
     linkedin = links["linkedin"]
@@ -223,131 +347,139 @@ if uploaded_file:
     sections = check_sections(resume_text)
     skills_found = extract_skills(resume_text)
 
-    score = calculate_ats_score(sections, skills_found, email, phone, github, linkedin)
-
-    st.subheader("✅ ATS Score")
-    st.progress(score / 100)
-    st.write(f"### ⭐ ATS Score: {score}/100")
-
-    st.subheader("📞 Contact Info Detected")
-    st.write("**Email:**", email if email else "❌ Not Found")
-    st.write("**Phone:**", phone if phone else "❌ Not Found")
-
-    st.subheader("🔗 Profile Links Detected")
-    st.write("**GitHub:**", github if github else "❌ Not Found")
-    st.write("**LinkedIn:**", linkedin if linkedin else "❌ Not Found")
-
-    st.subheader("📌 Sections Found")
-    for sec, found in sections.items():
-        if found:
-            st.write(f"✅ {sec.title()}")
-        else:
-            st.write(f"❌ {sec.title()}")
-
-    st.subheader("🧠 Skills Found")
-    if skills_found:
-        st.write(", ".join(skills_found))
-    else:
-        st.write("❌ No skills detected")
-
     match_score = None
     matched = None
     missing = None
 
-    # Job description match
     if job_desc.strip():
-        st.subheader("🎯 Job Description Match Score")
-
         match_score, matched, missing, job_skills = job_match(skills_found, job_desc)
 
-        st.progress(match_score / 100)
-        st.write(f"### 🔥 Match Score: {match_score}%")
+    final_score, breakdown = calculate_score_breakdown(
+        sections, skills_found, email, phone, github, linkedin, match_score
+    )
 
-        st.write("✅ **Matched Skills:**")
-        if matched:
-            st.write(", ".join(matched))
+    roles = suggest_roles(skills_found)
+
+    # Metrics Row
+    col1, col2, col3 = st.columns(3)
+
+    col1.metric("⭐ ATS Score", f"{final_score}/100")
+    col2.metric("🧠 Skills Found", len(skills_found))
+    col3.metric(
+        "🎯 JD Match Score", f"{match_score}%" if match_score is not None else "N/A"
+    )
+
+    st.write("")
+
+    # Tabs
+    tab1, tab2, tab3, tab4 = st.tabs(
+        ["📊 Score Details", "🧠 Skills & Roles", "🎯 JD Match", "📥 Download Report"]
+    )
+
+    with tab1:
+        st.subheader("📊 Score Breakdown")
+        for k, v in breakdown.items():
+            st.write(f"✅ **{k}:** {v}")
+
+        st.write("---")
+
+        st.subheader("📞 Contact Info")
+        st.write("**Email:**", email if email else "❌ Not Found")
+        st.write("**Phone:**", phone if phone else "❌ Not Found")
+
+        st.write("---")
+
+        st.subheader("🔗 Profile Links")
+        st.write("**GitHub:**", github if github else "❌ Not Found")
+        st.write("**LinkedIn:**", linkedin if linkedin else "❌ Not Found")
+
+        st.write("---")
+
+        with st.expander("📌 Sections Found"):
+            for sec, found in sections.items():
+                st.write(f"{'✅' if found else '❌'} {sec.title()}")
+
+        with st.expander("📌 Resume Preview (First 1500 characters)"):
+            st.text_area("Preview", resume_text[:1500], height=250)
+
+    with tab2:
+        st.subheader("🧠 Skills Found")
+        if skills_found:
+            st.write(", ".join(skills_found))
         else:
-            st.write("❌ No skills matched")
+            st.write("❌ No skills detected")
 
-        st.write("⚠️ **Missing Skills:**")
-        if missing:
-            st.write(", ".join(missing))
+        st.write("---")
+
+        st.subheader("💼 Suggested Job Roles")
+        for r in roles:
+            st.write("✅", r)
+
+    with tab3:
+        if job_desc.strip():
+            st.subheader("🎯 Job Match Score")
+            st.progress(match_score / 100)
+            st.write(f"### 🔥 Match Score: {match_score}%")
+
+            st.write("✅ **Matched Keywords:**")
+            st.write(", ".join(matched) if matched else "❌ None")
+
+            st.write("⚠️ **Missing Keywords:**")
+            st.write(", ".join(missing) if missing else "🔥 None (Perfect Match!)")
         else:
-            st.write("🔥 No missing skills. Great match!")
+            st.warning(
+                "⚠️ Paste a Job Description in the sidebar to see Match Score and Missing Skills."
+            )
 
-    st.subheader("🚀 Suggestions to Improve ATS Score")
-    suggestions = []
+    with tab4:
+        st.subheader("📥 Download Your ATS Report")
 
-    if not email:
-        suggestions.append("Add a valid email address.")
-    if not phone:
-        suggestions.append("Add a phone number.")
-    if not github:
-        suggestions.append("Add your GitHub profile link.")
-    if not linkedin:
-        suggestions.append("Add your LinkedIn profile link.")
-    if not sections["summary"]:
-        suggestions.append("Add a Summary / Objective section.")
-    if not sections["education"]:
-        suggestions.append("Add Education section.")
-    if not sections["projects"]:
-        suggestions.append("Add Projects section.")
-    if not sections["experience"]:
-        suggestions.append("Add Experience / Internship section.")
-    if len(skills_found) < 5:
-        suggestions.append("Add more relevant technical skills.")
-    if not sections["certifications"]:
-        suggestions.append("Add Certifications (optional but helpful).")
+        report_text = generate_report(
+            final_score,
+            breakdown,
+            email,
+            phone,
+            github,
+            linkedin,
+            sections,
+            skills_found,
+            match_score,
+            matched,
+            missing,
+            roles,
+        )
 
-    if suggestions:
-        for s in suggestions:
-            st.write("⚠️", s)
-    else:
-        st.write("🔥 Your resume looks ATS-friendly!")
+        st.download_button(
+            label="⬇️ Download TXT Report",
+            data=report_text,
+            file_name="resume_ats_report_pro.txt",
+            mime="text/plain",
+        )
 
-    # DOWNLOAD SECTION
-    st.subheader("📥 Download Report")
+        report_data = {
+            "Final ATS Score": [final_score],
+            "Email Found": [bool(email)],
+            "Phone Found": [bool(phone)],
+            "GitHub Found": [bool(github)],
+            "LinkedIn Found": [bool(linkedin)],
+            "Skills Count": [len(skills_found)],
+            "Suggested Roles": [", ".join(roles)],
+        }
 
-    report_text = generate_report(
-        score,
-        email,
-        phone,
-        github,
-        linkedin,
-        sections,
-        skills_found,
-        match_score,
-        matched,
-        missing,
-    )
+        if job_desc.strip():
+            report_data["Job Match Score"] = [match_score]
+            report_data["Matched Skills"] = [", ".join(matched)]
+            report_data["Missing Skills"] = [", ".join(missing)]
 
-    st.download_button(
-        label="⬇️ Download Report as TXT",
-        data=report_text,
-        file_name="resume_ats_report.txt",
-        mime="text/plain",
-    )
+        df_report = pd.DataFrame(report_data)
+        csv_data = df_report.to_csv(index=False)
 
-    report_data = {
-        "ATS Score": [score],
-        "Email Found": [bool(email)],
-        "Phone Found": [bool(phone)],
-        "GitHub Found": [bool(github)],
-        "LinkedIn Found": [bool(linkedin)],
-        "Skills Count": [len(skills_found)],
-    }
+        st.download_button(
+            label="⬇️ Download CSV Report",
+            data=csv_data,
+            file_name="resume_ats_report_pro.csv",
+            mime="text/csv",
+        )
 
-    if job_desc.strip():
-        report_data["Job Match Score"] = [match_score]
-        report_data["Matched Skills"] = [", ".join(matched)]
-        report_data["Missing Skills"] = [", ".join(missing)]
-
-    df_report = pd.DataFrame(report_data)
-    csv_data = df_report.to_csv(index=False)
-
-    st.download_button(
-        label="⬇️ Download Report as CSV",
-        data=csv_data,
-        file_name="resume_ats_report.csv",
-        mime="text/csv",
-    )
+else:
+    st.info("👈 Upload a Resume in the sidebar to start analysis.")

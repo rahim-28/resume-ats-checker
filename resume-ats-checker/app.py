@@ -2,6 +2,7 @@ import streamlit as st
 import pdfplumber
 import re
 import pandas as pd
+from docx import Document
 from skills import SKILLS
 
 
@@ -13,6 +14,15 @@ def extract_text_from_pdf(pdf_file):
             page_text = page.extract_text()
             if page_text:
                 text += page_text + "\n"
+    return text.lower()
+
+
+# Extract text from DOCX
+def extract_text_from_docx(docx_file):
+    doc = Document(docx_file)
+    text = ""
+    for para in doc.paragraphs:
+        text += para.text + "\n"
     return text.lower()
 
 
@@ -181,16 +191,24 @@ st.set_page_config(page_title="Resume ATS Checker", page_icon="📄")
 
 st.title("📄 Resume ATS Checker (Free AI Project)")
 st.write(
-    "Upload your resume PDF and optionally paste Job Description to check match score."
+    "Upload your resume (PDF or DOCX) and optionally paste Job Description to check match score."
 )
 
-uploaded_file = st.file_uploader("Upload Resume (PDF only)", type=["pdf"])
+uploaded_file = st.file_uploader("Upload Resume (PDF / DOCX)", type=["pdf", "docx"])
 job_desc = st.text_area("📌 Paste Job Description (Optional)", height=200)
 
 if uploaded_file:
     st.success("Resume uploaded successfully!")
 
-    resume_text = extract_text_from_pdf(uploaded_file)
+    file_type = uploaded_file.name.split(".")[-1].lower()
+
+    if file_type == "pdf":
+        resume_text = extract_text_from_pdf(uploaded_file)
+    elif file_type == "docx":
+        resume_text = extract_text_from_docx(uploaded_file)
+    else:
+        st.error("Unsupported file format!")
+        st.stop()
 
     st.subheader("📌 Resume Preview (First 1500 characters)")
     st.text_area("Extracted Resume Text", resume_text[:1500], height=200)

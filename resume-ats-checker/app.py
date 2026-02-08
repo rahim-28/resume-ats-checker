@@ -471,3 +471,5 @@ if uploaded_file:
 
 else:
     st.info("👈 Upload a Resume in the sidebar to start analysis.")
+
+    #The end

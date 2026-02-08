@@ -238,7 +238,6 @@ def generate_report(
     missing=None,
     roles=None,
 ):
-
     report = f"""
 ==============================
      RESUME ATS REPORT
@@ -380,7 +379,6 @@ if uploaded_file:
     roles = suggest_roles(skills_found, domain)
 
     col1, col2, col3 = st.columns(3)
-
     col1.metric("⭐ ATS Score", f"{final_score}/100")
     col2.metric("🧠 Skills Found", len(skills_found))
     col3.metric(
@@ -391,10 +389,32 @@ if uploaded_file:
         ["📊 Score Details", "🧠 Skills & Roles", "🎯 JD Match", "📥 Download Report"]
     )
 
+    # ✅ FIXED TAB 1 (OLD UI STYLE ADDED)
     with tab1:
         st.subheader("📊 Score Breakdown")
         for k, v in breakdown.items():
             st.write(f"✅ **{k}:** {v}")
+
+        st.write("---")
+
+        st.subheader("📞 Contact Info")
+        st.write("**Email:**", email if email else "❌ Not Found")
+        st.write("**Phone:**", phone if phone else "❌ Not Found")
+
+        st.write("---")
+
+        st.subheader("🔗 Profile Links")
+        st.write("**GitHub:**", github if github else "❌ Not Found")
+        st.write("**LinkedIn:**", linkedin if linkedin else "❌ Not Found")
+
+        st.write("---")
+
+        with st.expander("📌 Sections Found"):
+            for sec, found in sections.items():
+                st.write(f"{'✅' if found else '❌'} {sec.title()}")
+
+        with st.expander("📌 Resume Preview (First 1500 characters)"):
+            st.text_area("Preview", resume_text[:1500], height=250)
 
     with tab2:
         st.subheader("🧠 Skills Found")
@@ -471,5 +491,3 @@ if uploaded_file:
 
 else:
     st.info("👈 Upload a Resume in the sidebar to start analysis.")
-
-    #The end
